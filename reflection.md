@@ -30,13 +30,15 @@ Classes and responsibilities:
 
 **a. Constraints and priorities**
 
-- What constraints does your scheduler consider (for example: time, priority, preferences)?
-- How did you decide which constraints mattered most?
+The scheduler considers three constraints: available time per day (hard cap in minutes), task priority (HIGH, MEDIUM, LOW), and pet preferences (preferred categories like "walks" or "enrichment"). Tasks matching pet preferences are grouped first, then sorted by priority within each group; tasks are then added until the time budget is exhausted.
+
+Time was treated as the hardest constraint because no schedule can exceed an owner's actual availability. Priority came second since pet care has non-negotiable tasks (medications, feeding) that must be addressed before optional ones. Preferences were applied as a boost on top of priority to personalize the schedule without overriding safety-critical tasks.
 
 **b. Tradeoffs**
 
-- Describe one tradeoff your scheduler makes.
-- Why is that tradeoff reasonable for this scenario?
+The scheduler uses a greedy fit strategy: it works through tasks in priority/preference order and adds each one if it fits in the remaining time, skipping it permanently if it does not. This means a single long HIGH priority task could consume enough time to crowd out several shorter MEDIUM tasks that would have collectively fit.
+
+This tradeoff is reasonable for pet care because correctness matters more than time efficiency — a medication task must be scheduled even if it leaves less room for enrichment. A more optimal bin-packing approach would add significant complexity with little practical benefit at the scale of one pet's daily routine.
 
 ---
 

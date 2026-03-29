@@ -22,6 +22,16 @@ Your final app should:
 - Display the plan clearly (and ideally explain the reasoning)
 - Include tests for the most important scheduling behaviors
 
+## Smarter Scheduling
+
+The `Scheduler` class supports sorting tasks by duration, priority, or category, and filtering by category, priority, completion status, or pet name. `TaskRepository` provides matching query methods for persistent lookups.
+
+Tasks can be assigned a `scheduled_start` (minutes from midnight); `Scheduler.detect_conflicts()` checks for time-window overlaps and returns plain warning strings without crashing the program.
+
+Tasks support a `frequency` field (`ONCE`, `DAILY`, `WEEKLY`). Calling `TaskRepository.mark_task_complete()` on a recurring task automatically adds the next occurrence with an advanced due date.
+
+---
+
 ## Getting started
 
 ### Setup
@@ -41,3 +51,5 @@ pip install -r requirements.txt
 5. Add tests to verify key behaviors.
 6. Connect your logic to the Streamlit UI in `app.py`.
 7. Refine UML so it matches what you actually built.
+
+

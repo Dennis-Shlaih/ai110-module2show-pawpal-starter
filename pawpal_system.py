@@ -1,6 +1,7 @@
+import uuid
 from dataclasses import dataclass, field
 from enum import Enum
-from datetime import date
+from datetime import date, timedelta
 from typing import Optional
 
 
@@ -20,6 +21,13 @@ class Category(Enum):
     MEDICATIONS = "medications"
     ENRICHMENT  = "enrichment"
     GROOMING    = "grooming"
+
+
+class Frequency(Enum):
+    """Enumeration of task recurrence frequency: ONCE, DAILY, WEEKLY."""
+    ONCE   = "once"
+    DAILY  = "daily"
+    WEEKLY = "weekly"
 
 
 # ── Dataclasses ───────────────────────────────────────────────────────────────
@@ -55,11 +63,35 @@ class Task:
     category:         Category
     owner_id:         Optional[str] = None    # Reference to owner for easier lookups
     pet_id:           Optional[str] = None    # Reference to pet for easier lookups
+    pet_name:         Optional[str] = None    # Pet name for convenient filtering by name
     is_completed:     bool = False
+    frequency:        Frequency = Frequency.ONCE
+    due_date:         Optional[date] = None
+    scheduled_start:  Optional[int] = None   # Minutes from midnight (e.g. 480 = 8:00 AM)
 
     def mark_complete(self) -> None:
         """Mark this task as completed."""
         self.is_completed = True
+
+    def create_next_occurrence(self) -> Optional["Task"]:
+        """Return a new Task for the next occurrence if this is a recurring task, else None."""
+        if self.frequency == Frequency.ONCE:
+            return None
+        delta = timedelta(days=1) if self.frequency == Frequency.DAILY else timedelta(weeks=1)
+        next_due = (self.due_date + delta) if self.due_date else (date.today() + delta)
+        return Task(
+            task_id=str(uuid.uuid4()),
+            name=self.name,
+            duration_minutes=self.duration_minutes,
+            priority=self.priority,
+            category=self.category,
+            owner_id=self.owner_id,
+            pet_id=self.pet_id,
+            pet_name=self.pet_name,
+            is_completed=False,
+            frequency=self.frequency,
+            due_date=next_due,
+        )
 
     def update_task(self, **kwargs) -> None:
         """Update task attributes."""
@@ -157,6 +189,64 @@ class Scheduler:
             reasoning += f"Could not fit: {', '.join(skipped)}."
         
         return scheduled, reasoning
+    
+    def sort_by_duration(self, tasks: list[Task], order: str = "asc") -> list[Task]:
+        """Sort tasks by duration in ascending (shortest first) or descending order."""
+        reverse = order == "desc"
+        return sorted(tasks, key=lambda t: t.duration_minutes, reverse=reverse)
+    
+    def sort_by_priority(self, tasks: list[Task], reverse: bool = False) -> list[Task]:
+        """Sort tasks by priority (HIGH > MEDIUM > LOW), optionally reversed."""
+        priority_order = {Priority.HIGH: 0, Priority.MEDIUM: 1, Priority.LOW: 2}
+        return sorted(tasks, key=lambda t: priority_order[t.priority], reverse=reverse)
+    
+    def sort_by_category(self, tasks: list[Task]) -> list[Task]:
+        """Sort tasks by category to cluster related tasks together."""
+        return sorted(tasks, key=lambda t: t.category.value)
+    
+    def filter_by_category(self, tasks: list[Task], category: Category) -> list[Task]:
+        """Filter tasks by category."""
+        return [task for task in tasks if task.category == category]
+    
+    def filter_by_priority(self, tasks: list[Task], priority: Priority) -> list[Task]:
+        """Filter tasks by priority level."""
+        return [task for task in tasks if task.priority == priority]
+    
+    def filter_completed(self, tasks: list[Task], completed: bool = False) -> list[Task]:
+        """Filter tasks by completion status."""
+        return [task for task in tasks if task.is_completed == completed]
+    
+    def filter_by_pet_name(self, tasks: list[Task], pet_name: str) -> list[Task]:
+        """Filter tasks by pet name (case-insensitive)."""
+        return [task for task in tasks if task.pet_name and task.pet_name.lower() == pet_name.lower()]
+
+    def detect_conflicts(self, tasks: list[Task]) -> list[str]:
+        """Check for scheduling conflicts among tasks that have a scheduled_start set.
+
+        Two tasks conflict when their time windows overlap:
+            task A starts before task B ends AND task B starts before task A ends.
+
+        Returns a list of human-readable warning strings (empty list = no conflicts).
+        """
+        timed = [t for t in tasks if t.scheduled_start is not None]
+        warnings: list[str] = []
+
+        for i in range(len(timed)):
+            for j in range(i + 1, len(timed)):
+                a, b = timed[i], timed[j]
+                a_end = a.scheduled_start + a.duration_minutes
+                b_end = b.scheduled_start + b.duration_minutes
+                if a.scheduled_start < b_end and b.scheduled_start < a_end:
+                    a_label = f'"{a.name}"' + (f" ({a.pet_name})" if a.pet_name else "")
+                    b_label = f'"{b.name}"' + (f" ({b.pet_name})" if b.pet_name else "")
+                    a_time = f"{a.scheduled_start // 60:02d}:{a.scheduled_start % 60:02d}"
+                    b_time = f"{b.scheduled_start // 60:02d}:{b.scheduled_start % 60:02d}"
+                    warnings.append(
+                        f"WARNING: Scheduling conflict — {a_label} at {a_time} "
+                        f"overlaps with {b_label} at {b_time}."
+                    )
+
+        return warnings
 
 
 class Schedule:
@@ -250,3 +340,37 @@ class TaskRepository:
     def get_tasks_by_priority(self, priority: Priority) -> list[Task]:
         """Retrieve all tasks with a specific priority level."""
         return [task for task in self.tasks if task.priority == priority]
+    
+    def get_tasks_by_category(self, category: Category) -> list[Task]:
+        """Retrieve all tasks with a specific category."""
+        return [task for task in self.tasks if task.category == category]
+    
+    def get_tasks_by_status(self, is_completed: bool) -> list[Task]:
+        """Retrieve tasks by completion status (True=completed, False=pending)."""
+        return [task for task in self.tasks if task.is_completed == is_completed]
+    
+    def get_completed_tasks(self) -> list[Task]:
+        """Retrieve all completed tasks."""
+        return self.get_tasks_by_status(True)
+    
+    def get_pending_tasks(self) -> list[Task]:
+        """Retrieve all pending (incomplete) tasks."""
+        return self.get_tasks_by_status(False)
+    
+    def get_tasks_by_pet_name(self, pet_name: str) -> list[Task]:
+        """Retrieve all tasks for a specific pet by name (case-insensitive)."""
+        return [task for task in self.tasks if task.pet_name and task.pet_name.lower() == pet_name.lower()]
+
+    def mark_task_complete(self, task_id: str) -> Optional[Task]:
+        """Mark a task complete and auto-schedule the next occurrence for recurring tasks.
+
+        Returns the newly created next-occurrence Task if one was created, else None.
+        """
+        for task in self.tasks:
+            if task.task_id == task_id:
+                task.mark_complete()
+                next_task = task.create_next_occurrence()
+                if next_task:
+                    self.add_task(next_task)
+                return next_task
+        return None
