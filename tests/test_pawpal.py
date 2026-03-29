@@ -631,5 +631,72 @@ class TestRecurringTasks(unittest.TestCase):
         self.assertIsNone(result)
 
 
+class TestConflictDetection(unittest.TestCase):
+    """Test cases for Scheduler.detect_conflicts()."""
+
+    def setUp(self):
+        self.scheduler = Scheduler()
+
+    def _task(self, task_id, name, start, duration, pet_name=None):
+        return Task(
+            task_id=task_id,
+            name=name,
+            duration_minutes=duration,
+            priority=Priority.MEDIUM,
+            category=Category.WALKS,
+            pet_name=pet_name,
+            scheduled_start=start,
+        )
+
+    def test_duplicate_start_times_flagged(self):
+        """Two tasks starting at the exact same time should produce a conflict warning."""
+        tasks = [
+            self._task("t1", "Morning Walk", 480, 30, "Max"),
+            self._task("t2", "Medication",   480,  5, "Max"),
+        ]
+        warnings = self.scheduler.detect_conflicts(tasks)
+        self.assertEqual(len(warnings), 1)
+        self.assertIn("WARNING", warnings[0])
+
+    def test_overlapping_tasks_flagged(self):
+        """A task starting mid-way through another should be flagged as a conflict."""
+        tasks = [
+            self._task("t1", "Morning Walk", 480, 30, "Max"),  # 8:00–8:30
+            self._task("t2", "Medication",   495,  5, "Max"),  # 8:15–8:20 — inside Walk
+        ]
+        warnings = self.scheduler.detect_conflicts(tasks)
+        self.assertEqual(len(warnings), 1)
+
+    def test_non_overlapping_tasks_no_conflict(self):
+        """Tasks with no time overlap should produce no warnings."""
+        tasks = [
+            self._task("t1", "Morning Walk", 480, 30),  # 8:00–8:30
+            self._task("t2", "Feeding",      510, 10),  # 8:30–8:40 — starts exactly when Walk ends
+        ]
+        warnings = self.scheduler.detect_conflicts(tasks)
+        self.assertEqual(len(warnings), 0)
+
+    def test_tasks_without_scheduled_start_ignored(self):
+        """Tasks missing scheduled_start should be skipped without error."""
+        tasks = [
+            Task(task_id="t1", name="Walk", duration_minutes=30,
+                 priority=Priority.HIGH, category=Category.WALKS),
+            Task(task_id="t2", name="Feed", duration_minutes=10,
+                 priority=Priority.HIGH, category=Category.FEEDING),
+        ]
+        warnings = self.scheduler.detect_conflicts(tasks)
+        self.assertEqual(len(warnings), 0)
+
+    def test_conflict_warning_contains_task_names(self):
+        """Warning message should include both conflicting task names."""
+        tasks = [
+            self._task("t1", "Morning Walk", 480, 30, "Max"),
+            self._task("t2", "Medication",   480,  5, "Max"),
+        ]
+        warning = self.scheduler.detect_conflicts(tasks)[0]
+        self.assertIn("Morning Walk", warning)
+        self.assertIn("Medication", warning)
+
+
 if __name__ == "__main__":
     unittest.main()
