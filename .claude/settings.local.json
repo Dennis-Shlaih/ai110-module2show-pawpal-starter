@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//mnt/wsl/Ubuntu/home/dennis/Desktop/codepath/AI110/projects/**)",
+      "Read(///wsl.localhost/Ubuntu//**)"
+    ]
+  }
+}
