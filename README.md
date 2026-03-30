@@ -84,4 +84,4 @@ pip install -r requirements.txt
 ```
 
 ### Demo
-![alt text](image.png)
+![alt text](demo.png)
