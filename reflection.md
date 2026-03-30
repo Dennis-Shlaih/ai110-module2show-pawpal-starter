@@ -49,10 +49,15 @@ This tradeoff is reasonable for pet care because correctness matters more than t
 - How did you use AI tools during this project (for example: design brainstorming, debugging, refactoring)?
 - What kinds of prompts or questions were most helpful?
 
+I primarily used Claude AI after I came up with my initial design plan. I used it to create a UML diagram that matched the system design, write the boilerplate code, and help with much of the debugging while implementing functionality.
+
+The most helpful prompts were the ones that were specific, yet concise. If I asked Claude to do something with multiple steps in great detail, it tends to miss the big picture. When I started to break the problem into smaller steps, each being a part of a separate message, Claude did a much better job solving the problem and implementing my solution.
+
 **b. Judgment and verification**
 
-- Describe one moment where you did not accept an AI suggestion as-is.
-- How did you evaluate or verify what the AI suggested?
+One instance where I did not accept an AI suggestion was when Claude wanted to replace the schedule_tasks() algorithm with a more pythonic single sorted() method. While both have similar efficiencies of O(nlogn), I decided to go with the slightly longer (10 lines vs 6 lines) algorithm even though more space is allocated (2 extra lists). At this stage, there wouldn't be any noticeable difference in performance, and the single sorted() approach would be less readable for someone not as familiar with Python.
+
+Throughout the project, I verified what the AI suggested by reading the code line-by-line and making sure it made sense. If it passed this scan, I would then make sure the solution matched my design expectations. Finally, I would evaluate the solution by testing it in either main.py or the demo, and recommend changes if necessary.
 
 ---
 
@@ -60,13 +65,13 @@ This tradeoff is reasonable for pet care because correctness matters more than t
 
 **a. What you tested**
 
-- What behaviors did you test?
-- Why were these tests important?
+The test suite covers five main areas: task completion (marking complete, idempotency), task management (adding to the repository, updating attributes, preventing task ID changes), scheduler sorting (duration ascending/descending, priority order, category clustering), scheduler filtering (by category, priority, completion status, and pet name including case-insensitivity), recurring task logic (daily and weekly due date advancement, attribute inheritance, no next occurrence for once tasks), and conflict detection (overlapping windows flagged, back-to-back windows not flagged, tasks without a start time safely ignored).
+
+These tests were important because the scheduler's correctness is not obvious from reading the code alone, a greedy fit algorithm can silently produce wrong output if the sort order or time comparison is off by one. Testing boundary cases like exact back-to-back tasks (no overlap) and completing a recurring task with no due date gave confidence that edge inputs wouldn't break the system.
 
 **b. Confidence**
 
-- How confident are you that your scheduler works correctly?
-- What edge cases would you test next if you had more time?
+I would say I'm mostly confident. The core logic is well covered, and all 38 tests in the test suite pass consistently. However, it doesn't cover all edge cases. For example, a task with a negative or zero duration, or a task that spans midnight.
 
 ---
 
@@ -74,12 +79,12 @@ This tradeoff is reasonable for pet care because correctness matters more than t
 
 **a. What went well**
 
-- What part of this project are you most satisfied with?
+The parts of the project I'm most satisfied with are the system architecture and sorting algorithms.
 
 **b. What you would improve**
 
-- If you had another iteration, what would you improve or redesign?
+If I had another attempt at this project, I believe that I would've spent more time testing edge cases in the program. Also, I likely would've included more functionality to it such, as the ability to delete tasks.
 
 **c. Key takeaway**
 
-- What is one important thing you learned about designing systems or working with AI on this project?
+One important thing I learned about working with AI is that you must give it thoughtful prompts, or it will not work optimally. It is crucial to spend a decent amount of time designing the system architecture even before thinking about using AI to implement your idea, and even when you've gotten to the state where AI is making suggestions, you must still verify it and make changes if necessary.

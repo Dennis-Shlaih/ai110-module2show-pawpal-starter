@@ -71,9 +71,6 @@ python -m pytest tests/
 ### Test Suite
 38 tests cover task completion and idempotency, adding tasks to the repository, updating task attributes, scheduler sorting (duration, priority, category) and filtering (category, priority, status, pet name), recurring task recurrence logic (daily and weekly), and conflict detection for overlapping scheduled times.
 
-### System Reliability
-4 / 5 Stars: The core logic is well covered. All 38 tests pass consistently. One star is missing because right now, it misses edge case tests, such as a task that spans midnight or negative duration.
-
 ---
 
 ## Getting started
@@ -86,4 +83,5 @@ source .venv/bin/activate  # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-
+### Demo
+![alt text](image.png)
